@@ -1,0 +1,53 @@
+openapi: 3.0.3
+info:
+  title: Data Asset Management API
+  version: 0.1.0
+paths:
+  /api/v1/datasources:
+    get:
+      summary: 查询数据源列表
+    post:
+      summary: 新建数据源
+  /api/v1/datasources/{id}/test-connection:
+    post:
+      summary: 测试连接
+  /api/v1/tables:
+    get:
+      summary: 检索表资产
+    post:
+      summary: 创建表（可视化/SQL）
+  /api/v1/tables/{id}/validate:
+    post:
+      summary: 执行命名/注释/SQL/分层校验
+  /api/v1/tables/{id}/change-logs:
+    get:
+      summary: 查询表变更日志
+  /api/v1/assets/search:
+    get:
+      summary: 多维模糊检索资产
+  /api/v1/lineage/tables/{tableId}:
+    get:
+      summary: 获取表级血缘图
+  /api/v1/lineage/columns:
+    get:
+      summary: 获取字段级血缘
+  /api/v1/standards/head-office/fields:
+    get:
+      summary: 查询总行标准字段
+  /api/v1/standards/branch-ods/fields:
+    get:
+      summary: 查询分行 ODS 字段
+    post:
+      summary: 新增分行 ODS 字段
+  /api/v1/standards/mappings/auto-align:
+    post:
+      summary: 自动对齐字段映射
+  /api/v1/exploration/query:
+    post:
+      summary: 在线 SQL 执行
+  /api/v1/exploration/export-requests:
+    post:
+      summary: 提交导出审批
+  /api/v1/exploration/export-requests/{id}/approve:
+    post:
+      summary: 审批导出
