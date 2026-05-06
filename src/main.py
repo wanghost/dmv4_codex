@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
@@ -8,6 +8,22 @@ from .schemas import DataSourceCreate, DataSourceOut, TableCreate, TableOut
 app = FastAPI(title="Data Asset Management API", version="0.1.0")
 
 Base.metadata.create_all(bind=engine)
+
+ROLE_PERMISSIONS = {
+    "admin": {"datasource:write", "table:write", "table:validate"},
+    "editor": {"table:write", "table:validate"},
+    "viewer": set(),
+}
+
+
+def require_permission(permission: str, x_role: str = Header(default="viewer")) -> str:
+    role = x_role.lower()
+    permissions = ROLE_PERMISSIONS.get(role)
+    if permissions is None:
+        raise HTTPException(status_code=401, detail="Unknown role")
+    if permission not in permissions:
+        raise HTTPException(status_code=403, detail="Permission denied")
+    return role
 
 
 @app.get("/health")
@@ -21,7 +37,11 @@ def list_datasources(db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/datasources", response_model=DataSourceOut)
-def create_datasource(payload: DataSourceCreate, db: Session = Depends(get_db)):
+def create_datasource(
+    payload: DataSourceCreate,
+    db: Session = Depends(get_db),
+    _: str = Depends(lambda x_role=Header(default="viewer"): require_permission("datasource:write", x_role)),
+):
     exists = db.query(DataSource).filter_by(name=payload.name).first()
     if exists:
         raise HTTPException(status_code=409, detail="Data source already exists")
@@ -33,7 +53,11 @@ def create_datasource(payload: DataSourceCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/datasources/{id}/test-connection")
-def test_connection(id: int, db: Session = Depends(get_db)):
+def test_connection(
+    id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(lambda x_role=Header(default="viewer"): require_permission("datasource:write", x_role)),
+):
     entity = db.query(DataSource).get(id)
     if not entity:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -46,7 +70,11 @@ def list_tables(db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/tables", response_model=TableOut)
-def create_table(payload: TableCreate, db: Session = Depends(get_db)):
+def create_table(
+    payload: TableCreate,
+    db: Session = Depends(get_db),
+    _: str = Depends(lambda x_role=Header(default="viewer"): require_permission("table:write", x_role)),
+):
     ds = db.query(DataSource).get(payload.datasource_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -58,7 +86,11 @@ def create_table(payload: TableCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/api/v1/tables/{id}/validate")
-def validate_table(id: int, db: Session = Depends(get_db)):
+def validate_table(
+    id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(lambda x_role=Header(default="viewer"): require_permission("table:validate", x_role)),
+):
     entity = db.query(MetadataTable).get(id)
     if not entity:
         raise HTTPException(status_code=404, detail="Table not found")
